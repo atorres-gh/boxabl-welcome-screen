@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>BOXABL Welcome Screen</title>
+<link rel="icon" type="image/svg+xml" href="./favicon.svg"/>
+<style>
+:root{--navy:#184273;--orange:#FFA400;--ink:#0B1D36;--paper:#fff;--mist:#d9e2ec}
+*{box-sizing:border-box}body{margin:0;font-family:Lato,Segoe UI,system-ui,sans-serif;background:#e8eef4;color:var(--ink)}
+.app{display:grid;grid-template-columns:minmax(280px,380px) 1fr;min-height:100dvh}
+@media(max-width:900px){.app{grid-template-columns:1fr}}
+aside{background:var(--ink);color:#f4f6f8;padding:20px;display:flex;flex-direction:column;gap:14px}
+.eyebrow{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--orange);font-weight:700;margin:0}
+h1{margin:0;font-size:1.25rem}
+.guests{display:flex;flex-direction:column;gap:8px;overflow:auto}
+.row{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;background:#102c4d;border-radius:10px;padding:8px}
+.row input{width:100%;min-height:40px;border:0;border-radius:8px;padding:0 8px}
+.row.vip{outline:2px solid var(--orange)}
+button{min-height:40px;border:0;border-radius:8px;cursor:pointer;font-weight:700}
+.primary{background:var(--orange);color:var(--ink)}
+.ghost{background:transparent;color:#9aabc0}
+.tv-wrap{padding:24px;display:grid;place-items:center}
+.tv{width:min(100%,960px);aspect-ratio:16/9;background:#fff;position:relative;overflow:hidden;box-shadow:0 20px 50px rgba(11,29,54,.25)}
+.tv.split{display:grid;grid-template-columns:1fr 1fr}
+.tv.vip{background:var(--navy);color:#fff}
+.names{padding:28px;z-index:1}
+.names .guest{font-weight:700;letter-spacing:.04em;text-transform:uppercase;text-align:center;font-size:clamp(18px,4vw,42px);line-height:1.15}
+.date{color:var(--orange);font-weight:700;letter-spacing:.08em;text-align:center;margin-bottom:12px}
+.welcome{font-style:italic;font-family:Georgia,serif;color:#fff;font-size:clamp(28px,6vw,58px);text-align:center}
+.status{font-size:12px;color:#9aabc0}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <p class="eyebrow">BOXABL</p>
+    <h1>Lobby welcome screen</h1>
+    <p class="status" id="status">Draft</p>
+    <div class="guests" id="list"></div>
+    <button class="ghost" id="add" type="button">Add guest</button>
+    <button class="ghost" id="hold" type="button">Hold yesterday’s names</button>
+    <button class="primary" id="pub" type="button">Publish now</button>
+    <p class="status">Skykit · F1 - Office: Guestlist</p>
+  </aside>
+  <div class="tv-wrap">
+    <div class="tv" id="tv">
+      <div class="names">
+        <div class="welcome" id="welcomeLine" hidden>Welcome</div>
+        <div class="date" id="dateLine"></div>
+        <div id="nameCol"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+const KEY='boxabl-welcome-ops-v9';
+const today=()=>new Date().toISOString().slice(0,10);
+function load(){
+  try{return JSON.parse(localStorage.getItem(KEY))||null}catch{return null}
+}
+let state=load()||{targetDate:today(),guests:[{id:crypto.randomUUID(),name:'Sadie Sink',company:null,isVip:false,included:true,source:'manual'}],status:'draft',skykitDisplay:'F1 - Office: Guestlist'};
+function save(){localStorage.setItem(KEY,JSON.stringify(state))}
+function vips(){return state.guests.filter(g=>g.included&&g.isVip)}
+function regs(){return state.guests.filter(g=>g.included&&!g.isVip)}
+function renderList(){
+  const el=document.getElementById('list');
+  el.innerHTML='';
+  state.guests.forEach(g=>{
+    const row=document.createElement('div');
+    row.className='row'+(g.isVip?' vip':'');
+    row.innerHTML=`<input value="${g.name.replace(/"/g,'"')}" /><button type="button">${g.isVip?'VIP':'Guest'}</button><button type="button">×</button>`;
+    const [inp,vipBtn,rm]=row.querySelectorAll('input,button');
+    inp.oninput=e=>{g.name=e.target.value;paint();};
+    vipBtn.onclick=()=>{g.isVip=!g.isVip;state.status='draft';paint();};
+    rm.onclick=()=>{state.guests=state.guests.filter(x=>x.id!==g.id);state.status='draft';paint();};
+    el.appendChild(row);
+  });
+}
+function paint(){
+  document.getElementById('status').textContent=state.status==='published'?'Published — Live on Skykit feed · '+state.skykitDisplay:'Draft · '+state.targetDate;
+  document.getElementById('dateLine').textContent=new Date(state.targetDate+'T12:00:00').toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'});
+  const tv=document.getElementById('tv');
+  const V=vips(), R=regs();
+  tv.className='tv';
+  const welcome=document.getElementById('welcomeLine');
+  const col=document.getElementById('nameCol');
+  col.innerHTML='';
+  if(V.length){
+    tv.classList.add('vip');
+    welcome.hidden=false;
+    V.concat(R).forEach(g=>{
+      const d=document.createElement('div');
+      d.className='guest';
+      d.textContent=g.company?`${g.name} · ${g.company}`:g.name;
+      col.appendChild(d);
+    });
+  } else {
+    welcome.hidden=true;
+    if(R.length>15) tv.classList.add('split');
+    R.forEach(g=>{
+      const d=document.createElement('div');
+      d.className='guest';
+      d.style.color='#184273';
+      d.textContent=g.name;
+      col.appendChild(d);
+    });
+  }
+  renderList();
+  save();
+}
+document.getElementById('add').onclick=()=>{
+  state.guests.push({id:crypto.randomUUID(),name:'',company:null,isVip:false,included:true,source:'manual'});
+  state.status='draft'; paint();
+};
+document.getElementById('pub').onclick=()=>{state.status='published';paint();};
+document.getElementById('hold').onclick=()=>{state.status='draft';paint();};
+paint();
+</script>
+</body>
+</html>
