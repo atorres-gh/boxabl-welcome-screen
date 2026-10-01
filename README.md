@@ -15,8 +15,11 @@ Reconstructed **iterable source** from the published grok.me app (no source maps
 - Publish writes `/skykit.png` in production
 - Calendly + Frontdesk sync (Outlook `@boxabl.com`)
 - Persist key `boxabl-welcome-ops-v9`
+- Publish requires **Your name on publishes** (`operatorName`). Empty name is blocked: “Enter your name before publishing.” Name is stored as `publishedBy` on the version.
 
 `public/index.html` is a standalone ops+preview you can open or drop into Grok Build.
+
+Synced to the live republish checked 1 Oct 2026. Hub and intake GitHub copies were already current and were not changed.
 
 ## Sister apps
 

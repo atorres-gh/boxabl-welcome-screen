@@ -39,8 +39,11 @@ button{min-height:40px;border:0;border-radius:8px;cursor:pointer;font-weight:700
     <p class="status" id="status">Draft</p>
     <div class="guests" id="list"></div>
     <button class="ghost" id="add" type="button">Add guest</button>
+    <label class="status" for="operator">Your name on publishes</label>
+    <input id="operator" placeholder="Required — e.g. Alexis" autocomplete="name" style="min-height:40px;border:0;border-radius:8px;padding:0 10px">
     <button class="ghost" id="hold" type="button">Hold yesterday’s names</button>
     <button class="primary" id="pub" type="button">Publish now</button>
+    <p class="status" id="pub-msg"></p>
     <p class="status">Skykit · F1 - Office: Guestlist</p>
   </aside>
   <div class="tv-wrap">
@@ -59,7 +62,8 @@ const today=()=>new Date().toISOString().slice(0,10);
 function load(){
   try{return JSON.parse(localStorage.getItem(KEY))||null}catch{return null}
 }
-let state=load()||{targetDate:today(),guests:[{id:crypto.randomUUID(),name:'Sadie Sink',company:null,isVip:false,included:true,source:'manual'}],status:'draft',skykitDisplay:'F1 - Office: Guestlist'};
+let state=load()||{targetDate:today(),guests:[{id:crypto.randomUUID(),name:'Sadie Sink',company:null,isVip:false,included:true,source:'manual'}],status:'draft',skykitDisplay:'F1 - Office: Guestlist',operatorName:''};
+if(!state.operatorName) state.operatorName='';
 function save(){localStorage.setItem(KEY,JSON.stringify(state))}
 function vips(){return state.guests.filter(g=>g.included&&g.isVip)}
 function regs(){return state.guests.filter(g=>g.included&&!g.isVip)}
@@ -78,7 +82,11 @@ function renderList(){
   });
 }
 function paint(){
-  document.getElementById('status').textContent=state.status==='published'?'Published — Live on Skykit feed · '+state.skykitDisplay:'Draft · '+state.targetDate;
+  const op=document.getElementById('operator');
+  if(document.activeElement!==op) op.value=state.operatorName||'';
+  document.getElementById('status').textContent=state.status==='published'
+    ? 'Published — Live on Skykit feed · '+state.skykitDisplay+(state.publishedBy?' · '+state.publishedBy:'')
+    : 'Draft · '+state.targetDate;
   document.getElementById('dateLine').textContent=new Date(state.targetDate+'T12:00:00').toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'});
   const tv=document.getElementById('tv');
   const V=vips(), R=regs();
@@ -113,7 +121,17 @@ document.getElementById('add').onclick=()=>{
   state.guests.push({id:crypto.randomUUID(),name:'',company:null,isVip:false,included:true,source:'manual'});
   state.status='draft'; paint();
 };
-document.getElementById('pub').onclick=()=>{state.status='published';paint();};
+document.getElementById('operator').oninput=e=>{state.operatorName=e.target.value;state.status=state.status==='published'?'draft':state.status;};
+document.getElementById('pub').onclick=()=>{
+  const name=(state.operatorName||'').trim();
+  const msg=document.getElementById('pub-msg');
+  if(!name){msg.textContent='Enter your name before publishing.';return;}
+  msg.textContent='';
+  state.operatorName=name;
+  state.publishedBy=name;
+  state.status='published';
+  paint();
+};
 document.getElementById('hold').onclick=()=>{state.status='draft';paint();};
 paint();
 </script>
